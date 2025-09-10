@@ -42,5 +42,29 @@ def index():
             error = f"İstek hatası: {str(e)}"
     return render_template('index.html', news=news, error=error)
 
+@app.route('/post/<post_id>')
+def post_detail(post_id):
+    params = {
+        'auth_token': API_TOKEN,
+        'public': 'true',
+        'metadata': 'true',
+    }
+    params['id'] = post_id
+    error = None
+    post = None
+    try:
+        resp = requests.get(API_BASE, params=params)
+        if resp.status_code == 200:
+            results = resp.json().get('results', [])
+            if results:
+                post = results[0]
+            else:
+                error = "Haber bulunamadı."
+        else:
+            error = f"API Hatası: {resp.status_code} - {resp.text}"
+    except Exception as e:
+        error = f"İstek hatası: {str(e)}"
+    return render_template('detail.html', post=post, error=error)
+
 if __name__ == '__main__':
     app.run(debug=True)
