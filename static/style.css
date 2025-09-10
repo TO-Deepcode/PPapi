@@ -1,0 +1,47 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f7f7f7;
+    margin: 0;
+    padding: 0;
+}
+h1 {
+    background: #222;
+    color: #fff;
+    padding: 20px;
+    margin: 0 0 20px 0;
+}
+form {
+    background: #fff;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+label {
+    margin-right: 10px;
+}
+input, select {
+    margin-right: 20px;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+button {
+    padding: 8px 16px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.news-item {
+    background: #fff;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.news-item img {
+    display: block;
+    margin-top: 10px;
+}

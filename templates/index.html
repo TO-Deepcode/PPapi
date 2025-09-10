@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CryptoPanic Haberleri</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>CryptoPanic Kripto Haberleri</h1>
+    <form method="POST">
+        <label>Kripto Para Kodları (örn: BTC,ETH):</label>
+        <input type="text" name="currencies" placeholder="BTC,ETH">
+        <label>Filtre:</label>
+        <select name="filter">
+            <option value="">Tümü</option>
+            <option value="rising">Yükselen</option>
+            <option value="hot">Sıcak</option>
+            <option value="bullish">Boğa</option>
+            <option value="bearish">Ayı</option>
+            <option value="important">Önemli</option>
+            <option value="lol">LOL</option>
+        </select>
+        <label>Bölge:</label>
+        <select name="region">
+            <option value="en">English</option>
+            <option value="tr">Türkçe</option>
+            <option value="de">Deutsch</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="ru">Русский</option>
+        </select>
+        <label>Tür:</label>
+        <select name="kind">
+            <option value="all">Tümü</option>
+            <option value="news">Haber</option>
+            <option value="media">Medya</option>
+        </select>
+        <button type="submit">Haberleri Getir</button>
+    </form>
+    <hr>
+    <div>
+        {% if news %}
+            <h2>Son Haberler</h2>
+            {% for post in news %}
+                <div class="news-item">
+                    <h3>{{ post.title }}</h3>
+                    <p>{{ post.description }}</p>
+                    <a href="{{ post.url }}" target="_blank">Kaynağa Git</a>
+                    {% if post.image %}
+                        <img src="{{ post.image }}" alt="Haber görseli" style="max-width:200px;">
+                    {% endif %}
+                    <hr>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Henüz haber yok veya filtre seçilmedi.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
