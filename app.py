@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import requests
 
 app = Flask(__name__)
@@ -65,6 +65,57 @@ def post_detail(post_id):
     except Exception as e:
         error = f"İstek hatası: {str(e)}"
     return render_template('detail.html', post=post, error=error)
+
+@app.route('/api/posts', methods=['POST'])
+def api_posts():
+    params = {
+        'auth_token': API_TOKEN,
+        'public': 'true',
+        'metadata': 'true',
+    }
+    data = request.get_json(force=True)
+    currencies = data.get('currencies', '')
+    filter_type = data.get('filter', '')
+    region = data.get('region', 'en')
+    kind = data.get('kind', '')
+    if currencies:
+        params['currencies'] = currencies
+    if filter_type:
+        params['filter'] = filter_type
+    if region:
+        params['regions'] = region
+    if kind in ['news', 'media']:
+        params['kind'] = kind
+    try:
+        resp = requests.get(API_BASE, params=params)
+        if resp.status_code == 200:
+            news = resp.json().get('results', [])
+            return jsonify({'status': 'ok', 'news': news})
+        else:
+            return jsonify({'status': 'error', 'error': resp.text}), resp.status_code
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+@app.route('/api/post/<post_id>', methods=['GET'])
+def api_post_detail(post_id):
+    params = {
+        'auth_token': API_TOKEN,
+        'public': 'true',
+        'metadata': 'true',
+        'id': post_id
+    }
+    try:
+        resp = requests.get(API_BASE, params=params)
+        if resp.status_code == 200:
+            results = resp.json().get('results', [])
+            if results:
+                return jsonify({'status': 'ok', 'post': results[0]})
+            else:
+                return jsonify({'status': 'error', 'error': 'Haber bulunamadı.'}), 404
+        else:
+            return jsonify({'status': 'error', 'error': resp.text}), resp.status_code
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
