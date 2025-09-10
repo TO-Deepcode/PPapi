@@ -30,13 +30,17 @@ def index():
     params['metadata'] = metadata
 
     news = []
+    error = None
     if request.method == 'POST':
-        resp = requests.get(API_BASE, params=params)
-        if resp.status_code == 200:
-            news = resp.json().get('results', [])
-        else:
-            news = []
-    return render_template('index.html', news=news)
+        try:
+            resp = requests.get(API_BASE, params=params)
+            if resp.status_code == 200:
+                news = resp.json().get('results', [])
+            else:
+                error = f"API Hatası: {resp.status_code} - {resp.text}"
+        except Exception as e:
+            error = f"İstek hatası: {str(e)}"
+    return render_template('index.html', news=news, error=error)
 
 if __name__ == '__main__':
     app.run(debug=True)
