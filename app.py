@@ -16,7 +16,7 @@ def index():
     currencies = request.form.get('currencies', '')
     filter_type = request.form.get('filter', '')
     region = request.form.get('region', 'en')
-    kind = request.form.get('kind', 'all')
+    kind = request.form.get('kind', '')
     metadata = 'true'
 
     if currencies:
@@ -25,7 +25,7 @@ def index():
         params['filter'] = filter_type
     if region:
         params['regions'] = region
-    if kind:
+    if kind in ['news', 'media']:
         params['kind'] = kind
     params['metadata'] = metadata
 
