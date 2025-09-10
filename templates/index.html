@@ -39,6 +39,9 @@
     </form>
     <hr>
     <div>
+        {% if error %}
+            <div style="color:red; font-weight:bold;">{{ error }}</div>
+        {% endif %}
         {% if news %}
             <h2>Son Haberler</h2>
             {% for post in news %}
