@@ -1,144 +1,88 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request
 import requests
-from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
+from datetime import datetime
 
 app = Flask(__name__)
 
-API_BASE = "https://cryptopanic.com/api/developer/v2/posts/"
-API_TOKEN = "ef356460da478d6803afa3f02c2d13080c62a968"
+def get_cointelegraph():
+    url = "https://cointelegraph.com/"
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, "lxml")
+    news = []
+    for item in soup.select(".posts-listing__item"):  # Ana sayfa haberleri
+        title = item.select_one(".post-card-inline__title")
+        link = item.select_one("a")
+        summary = item.select_one(".post-card-inline__text")
+        date = item.select_one("time")
+        news.append({
+            "title": title.text.strip() if title else "",
+            "url": link['href'] if link else "",
+            "description": summary.text.strip() if summary else "",
+            "published_at": date['datetime'] if date and date.has_attr('datetime') else ""
+        })
+    return news
 
-# Ana sayfa ve filtre formu
-@app.route('/', methods=['GET', 'POST'])
+def get_investing():
+    url = "https://tr.investing.com/news/cryptocurrency-news"
+    r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    soup = BeautifulSoup(r.text, "lxml")
+    news = []
+    for item in soup.select(".textDiv"):
+        title = item.select_one("a.title")
+        link = title
+        summary = item.select_one("p.articleDetails")
+        date = item.select_one("span.date")
+        news.append({
+            "title": title.text.strip() if title else "",
+            "url": link['href'] if link else "",
+            "description": summary.text.strip() if summary else "",
+            "published_at": date.text.strip() if date else ""
+        })
+    return news
+
+def get_cryptonews():
+    url = "https://cryptonews.com/tr/"
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, "lxml")
+    news = []
+    for item in soup.select(".cn-tile-row .cn-tile"):
+        title = item.select_one(".cn-tile-title")
+        link = item.select_one("a")
+        summary = item.select_one(".cn-tile-description")
+        date = item.select_one(".cn-tile-date")
+        news.append({
+            "title": title.text.strip() if title else "",
+            "url": link['href'] if link else "",
+            "description": summary.text.strip() if summary else "",
+            "published_at": date.text.strip() if date else ""
+        })
+    return news
+
+@app.route('/')
 def index():
-    params = {
-        'auth_token': API_TOKEN,
-        'public': 'true',
-        'metadata': 'true',
-        'kind': 'news',   # Sadece haberler
-        'regions': 'en',  # İngilizce haberler
-    }
-    currencies = request.form.get('currencies', '')
-    filter_type = request.form.get('filter', '')
-    region = request.form.get('region', 'en')
-    kind = request.form.get('kind', '')
-
-    if currencies:
-        params['currencies'] = currencies
-    if filter_type:
-        params['filter'] = filter_type
-    if region:
-        params['regions'] = region
-    if kind in ['news', 'media']:
-        params['kind'] = kind
-
     news = []
     error = None
-    if request.method == 'POST' or request.method == 'GET':
+    try:
+        news += get_cointelegraph()
+    except Exception as e:
+        error = f"Cointelegraph: {str(e)}"
+    try:
+        news += get_investing()
+    except Exception as e:
+        error = (error or "") + f" Investing: {str(e)}"
+    try:
+        news += get_cryptonews()
+    except Exception as e:
+        error = (error or "") + f" Cryptonews: {str(e)}"
+    # En güncelden eskiye sırala
+    def get_pub(post):
         try:
-            resp = requests.get(API_BASE, params=params)
-            if resp.status_code == 200:
-                all_news = resp.json().get('results', [])
-                # En güncel haberleri en üstte göstermek için published_at'a göre sırala
-                def get_pub(post):
-                    pub = post.get('published_at') or post.get('created_at')
-                    try:
-                        return datetime.strptime(pub, '%Y-%m-%dT%H:%M:%SZ') if pub else datetime.min
-                    except Exception:
-                        return datetime.min
-                all_news_sorted = sorted(all_news, key=get_pub, reverse=True)
-                # Sadece son 48 saat içindeki haberleri göster
-                now = datetime.utcnow()
-                filtered_news = []
-                for post in all_news_sorted:
-                    pub = post.get('published_at') or post.get('created_at')
-                    if pub:
-                        try:
-                            pub_dt = datetime.strptime(pub, '%Y-%m-%dT%H:%M:%SZ')
-                            if (now - pub_dt) <= timedelta(hours=48):
-                                filtered_news.append(post)
-                        except Exception:
-                            filtered_news.append(post)
-                news = filtered_news
-            else:
-                error = f"API Hatası: {resp.status_code} - {resp.text}"
-        except Exception as e:
-            error = f"İstek hatası: {str(e)}"
+            return datetime.strptime(post['published_at'], '%Y-%m-%dT%H:%M:%SZ')
+        except Exception:
+            return datetime.min
+    news = sorted(news, key=get_pub, reverse=True)
     return render_template('index.html', news=news, error=error)
-
-@app.route('/post/<post_id>')
-def post_detail(post_id):
-    params = {
-        'auth_token': API_TOKEN,
-        'public': 'true',
-        'metadata': 'true',
-    }
-    params['id'] = post_id
-    error = None
-    post = None
-    try:
-        resp = requests.get(API_BASE, params=params)
-        if resp.status_code == 200:
-            results = resp.json().get('results', [])
-            if results:
-                post = results[0]
-            else:
-                error = "Haber bulunamadı."
-        else:
-            error = f"API Hatası: {resp.status_code} - {resp.text}"
-    except Exception as e:
-        error = f"İstek hatası: {str(e)}"
-    return render_template('detail.html', post=post, error=error)
-
-@app.route('/api/posts', methods=['POST'])
-def api_posts():
-    params = {
-        'auth_token': API_TOKEN,
-        'public': 'true',
-        'metadata': 'true',
-    }
-    data = request.get_json(force=True)
-    currencies = data.get('currencies', '')
-    filter_type = data.get('filter', '')
-    region = data.get('region', 'en')
-    kind = data.get('kind', '')
-    if currencies:
-        params['currencies'] = currencies
-    if filter_type:
-        params['filter'] = filter_type
-    if region:
-        params['regions'] = region
-    if kind in ['news', 'media']:
-        params['kind'] = kind
-    try:
-        resp = requests.get(API_BASE, params=params)
-        if resp.status_code == 200:
-            news = resp.json().get('results', [])
-            return jsonify({'status': 'ok', 'news': news})
-        else:
-            return jsonify({'status': 'error', 'error': resp.text}), resp.status_code
-    except Exception as e:
-        return jsonify({'status': 'error', 'error': str(e)}), 500
-
-@app.route('/api/post/<post_id>', methods=['GET'])
-def api_post_detail(post_id):
-    params = {
-        'auth_token': API_TOKEN,
-        'public': 'true',
-        'metadata': 'true',
-        'id': post_id
-    }
-    try:
-        resp = requests.get(API_BASE, params=params)
-        if resp.status_code == 200:
-            results = resp.json().get('results', [])
-            if results:
-                return jsonify({'status': 'ok', 'post': results[0]})
-            else:
-                return jsonify({'status': 'error', 'error': 'Haber bulunamadı.'}), 404
-        else:
-            return jsonify({'status': 'error', 'error': resp.text}), resp.status_code
-    except Exception as e:
-        return jsonify({'status': 'error', 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
