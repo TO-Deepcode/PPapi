@@ -14,7 +14,6 @@ def index():
         'auth_token': API_TOKEN,
         'public': 'true',
         'metadata': 'true',
-        'filter': 'hot',  # En güncel ve popüler haberler için
         'kind': 'news',   # Sadece haberler
         'regions': 'en',  # İngilizce haberler
     }
@@ -39,10 +38,18 @@ def index():
             resp = requests.get(API_BASE, params=params)
             if resp.status_code == 200:
                 all_news = resp.json().get('results', [])
+                # En güncel haberleri en üstte göstermek için published_at'a göre sırala
+                def get_pub(post):
+                    pub = post.get('published_at') or post.get('created_at')
+                    try:
+                        return datetime.strptime(pub, '%Y-%m-%dT%H:%M:%SZ') if pub else datetime.min
+                    except Exception:
+                        return datetime.min
+                all_news_sorted = sorted(all_news, key=get_pub, reverse=True)
                 # Sadece son 48 saat içindeki haberleri göster
                 now = datetime.utcnow()
                 filtered_news = []
-                for post in all_news:
+                for post in all_news_sorted:
                     pub = post.get('published_at') or post.get('created_at')
                     if pub:
                         try:
