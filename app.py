@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import requests
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -12,12 +13,15 @@ def index():
     params = {
         'auth_token': API_TOKEN,
         'public': 'true',
+        'metadata': 'true',
+        'filter': 'hot',  # En güncel ve popüler haberler için
+        'kind': 'news',   # Sadece haberler
+        'regions': 'en',  # İngilizce haberler
     }
     currencies = request.form.get('currencies', '')
     filter_type = request.form.get('filter', '')
     region = request.form.get('region', 'en')
     kind = request.form.get('kind', '')
-    metadata = 'true'
 
     if currencies:
         params['currencies'] = currencies
@@ -27,15 +31,27 @@ def index():
         params['regions'] = region
     if kind in ['news', 'media']:
         params['kind'] = kind
-    params['metadata'] = metadata
 
     news = []
     error = None
-    if request.method == 'POST':
+    if request.method == 'POST' or request.method == 'GET':
         try:
             resp = requests.get(API_BASE, params=params)
             if resp.status_code == 200:
-                news = resp.json().get('results', [])
+                all_news = resp.json().get('results', [])
+                # Sadece son 48 saat içindeki haberleri göster
+                now = datetime.utcnow()
+                filtered_news = []
+                for post in all_news:
+                    pub = post.get('published_at') or post.get('created_at')
+                    if pub:
+                        try:
+                            pub_dt = datetime.strptime(pub, '%Y-%m-%dT%H:%M:%SZ')
+                            if (now - pub_dt) <= timedelta(hours=48):
+                                filtered_news.append(post)
+                        except Exception:
+                            filtered_news.append(post)
+                news = filtered_news
             else:
                 error = f"API Hatası: {resp.status_code} - {resp.text}"
         except Exception as e:
