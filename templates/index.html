@@ -48,6 +48,8 @@
                 <div class="news-item">
                     <h3>{{ post.title }}</h3>
                     <p>{{ post.description }}</p>
+                    <p><b>Kaynak:</b> {{ post.source.name if post.source else '' }}</p>
+                    <p><b>Tarih:</b> {{ post.published_at or post.created_at }}</p>
                     <a href="{{ post.url }}" target="_blank">Kaynağa Git</a>
                     <a href="/post/{{ post.id }}" style="margin-left:10px;">Detay</a>
                     {% if post.image %}
